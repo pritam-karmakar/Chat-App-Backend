@@ -28,7 +28,6 @@ export const userSignUp = async (req, res) => {
     }
     
     try {
-
         const isUserExist = await models.users.findOne({
             where: {
                 mobile_number: value.mobile_number,
@@ -42,25 +41,28 @@ export const userSignUp = async (req, res) => {
             });
         }
 
-        const newTransaction = await models.sequelize.transaction();
         const OTP = '000000';
+        const newTransaction = await models.sequelize.transaction();
 
         const user = await models.users.create({
             ...value,
             otp: OTP,
             created_by: 1
         }, { transaction: newTransaction });
-
+        
+        const hashedOTP = await bcrypt.hash(OTP, 10);
+        
+        const otpToken = await jwtGenerate(
+            { mobile_number: value.mobile_number, otp: hashedOTP },
+            { expiresIn: "5m" }
+        );
+        
         await newTransaction.commit();
-        const Token = await jwtGenerate({
-            ...value,
-            'otp' : OTP
-        });
 
         return ResponseHandeler(res, {
             status: 201,
             message: "User Registered Successfully",
-            data: { Token }
+            data: { otpToken }
         });
     } catch (error) {
         console.log(error, "error with server");
@@ -87,42 +89,59 @@ export const userOtpVefication = async (req, res) => {
             data: errors,
         });
     }
+
+    const { token, submitted_otp } = value;
     
     try {
-
-        const isUserExist = await models.users.findOne({
+        const tokenObject = await jwtVerify(token);
+        
+        const findUserData = await models.users.findOne({
             where: {
-                [Op.or]: {
-                    mobile_number: value.mobile_number,
-                },
+                mobile_number: tokenObject.mobile_number,
             },
         });
-
-        if (isUserExist) {
+        
+        if (!findUserData) {
             return ResponseHandeler(res, {
                 status: 400,
-                message: "User Already Exist",
+                message: "User not found!",
+            });
+        }
+        
+        const isOTPvalid = await bcrypt.compare(submitted_otp, tokenObject.otp);
+
+        if (!isOTPvalid) {
+            return ResponseHandeler(res, {
+                status: 400,
+                message: "Invalid OTP!",
             });
         }
 
-        const newTransaction = await models.sequelize.transaction();
+        if (findUserData.is_logged_in == true) {
+            return ResponseHandeler(res, {
+                status: 403,
+                message: "The user is already logged in",
+            });
+        }
 
-        const user = await models.users.create({
-            ...value,
-            otp: '000000',
-            created_by: 1
-        }, { transaction: newTransaction }
-        );
+        const userUpdate = await models.users.update({
+            is_mobile_verified: 1,
+            is_logged_in: 1
+        }, {
+            where : { mobile_number: tokenObject.mobile_number }
+        });
 
-        await newTransaction.commit();
+        const userObj = buildJwtPayload(findUserData);
+
+        const Token = await jwtGenerate(userObj);
 
         return ResponseHandeler(res, {
-            status: 201,
-            message: "User Registered Successfully",
+            status: 200,
+            message: "User Logged In Successfully",
+            data: { token: Token }
         });
     } catch (error) {
         console.log(error, "error with server");
-        await newTransaction.rollback();
         return ResponseHandeler(res, {
             status: 500,
             message: "Internal Server Error",

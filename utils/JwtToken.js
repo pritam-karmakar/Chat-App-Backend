@@ -11,12 +11,12 @@ import jwt from "jsonwebtoken";
 export function jwtGenerate(
   payload,
   {
-    secrate = process.env.JWT_SECRET,
+    secret = process.env.JWT_SECRET,
     expiresIn = process.env.JWT_EXPIRES_IN,
   } = {}
 ) {
   return new Promise((resolve, reject) => {
-    jwt.sign(payload, secrate, { expiresIn }, (err, token) => {
+    jwt.sign(payload, secret, { expiresIn }, (err, token) => {
       if (err) return reject(err);
       resolve(token);
     });
@@ -25,7 +25,7 @@ export function jwtGenerate(
 
 /**
  * @param {string} token
- * @param {string} secrate
+ * @param {string} secret
  * @returns {Promise<object>} - decoded
  */
 

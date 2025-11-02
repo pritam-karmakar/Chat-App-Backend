@@ -6,5 +6,6 @@ export const signUpValidationSchema = joi.object({
 });
 
 export const otpVeficationValidationSchema = joi.object({
-    otp: joi.number().required()
+    submitted_otp: joi.string().required(),
+    token: joi.string().required()
 })

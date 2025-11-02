@@ -25,7 +25,7 @@ export default (Sequelize, DataTypes) => {
             type: DataTypes.STRING,
             allowNull: false,
         },
-        is_mobile_verify: {
+        is_mobile_verified: {
             type: DataTypes.BOOLEAN,
             allowNull: false,
             defaultValue: false,
@@ -33,7 +33,16 @@ export default (Sequelize, DataTypes) => {
         is_active: {
             type: DataTypes.BOOLEAN,
             allowNull: false,
-            defaultValue: true,
+            defaultValue: false,
+        },
+        last_seen: {
+            type: DataTypes.DATE,
+            allowNull: true,
+        },
+        is_logged_in: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false,
         },
         created_at: {
             type: DataTypes.DATE,
